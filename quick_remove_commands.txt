@@ -1,0 +1,46 @@
+# Ubuntu Pro 快速删除命令
+# 在Ubuntu 24.04系统中删除Ubuntu Pro相关组件
+
+# 1. 检查当前状态
+dpkg -l | grep -E 'ubuntu-advantage|ubuntu-pro|ua-'
+
+# 2. 分离订阅（如果已订阅）
+sudo ua detach 2>/dev/null || sudo pro detach 2>/dev/null || true
+
+# 3. 删除主要软件包
+sudo apt remove --purge ubuntu-advantage-tools ubuntu-pro-client ubuntu-advantage-desktop-daemon -y 2>/dev/null || true
+
+# 4. 删除所有相关包（一次性）
+sudo apt remove --purge $(dpkg -l | grep -E "ubuntu-advantage|ubuntu-pro|ua-" | awk '{print $2}') -y 2>/dev/null || true
+
+# 5. 清理配置文件和数据
+sudo rm -rf /etc/ubuntu-advantage/
+sudo rm -rf /var/lib/ubuntu-advantage/
+sudo rm -rf /var/cache/ubuntu-advantage/
+sudo rm -rf /var/log/ubuntu-advantage*
+
+# 6. 清理APT源
+sudo rm -f /etc/apt/sources.list.d/ubuntu-esm*
+sudo rm -f /etc/apt/sources.list.d/ubuntu-fips*
+sudo rm -f /etc/apt/sources.list.d/ubuntu-cis*
+
+# 7. 停止和删除服务
+sudo systemctl stop ubuntu-advantage.service 2>/dev/null || true
+sudo systemctl disable ubuntu-advantage.service 2>/dev/null || true
+sudo rm -f /lib/systemd/system/ubuntu-advantage*
+sudo rm -f /lib/systemd/system/ua-*
+sudo systemctl daemon-reload
+
+# 8. 清理定时任务
+sudo find /etc/cron* -name "*ubuntu-advantage*" -delete 2>/dev/null || true
+sudo find /etc/cron* -name "*ubuntu-pro*" -delete 2>/dev/null || true
+
+# 9. 更新系统
+sudo apt update
+sudo apt autoremove -y
+sudo apt autoclean
+
+# 10. 验证删除结果
+echo "=== 验证删除结果 ==="
+dpkg -l | grep -E 'ubuntu-advantage|ubuntu-pro|ua-' || echo "✅ 所有包已删除"
+find /etc -name "*ubuntu-advantage*" 2>/dev/null || echo "✅ 配置文件已清理"
